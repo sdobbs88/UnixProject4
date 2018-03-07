@@ -1,0 +1,455 @@
+<head>
+<meta charset="UTF-8">
+<body>
+<title>Shaun's Car Parts</title>
+
+<h1 style="text-align: center;"><span style="background-color: rgb(169, 169, 169);">Invoice</span></h1>
+
+<hr />
+<p>Shaun's Car Parts</p>
+<p>14030 Abercorn Street</p>
+<p>Savannah, GA 31419</p>
+<p> 912-111-1111 </p>
+
+<table align="left" border="1" cellpadding="1" cellspacing="1" style="width:500px;">
+	<tbody>
+		<tr>
+			<th scope="row">Invoice #</th>
+			<td>0000001</td>
+		</tr>
+		<tr>
+			<th scope="row">Date</th>
+			<td>04/29/2016</td>
+			
+		</tr>
+		<tr>
+			<th scope="row">Amount Due</th>
+			<td>&nbsp;</td>
+		</tr>
+	</tbody>
+</table>
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+<p> 
+[<a href="invoice.php?choice=add">Add Information</a>]
+[<a href="invoice.php?choice=view">View Invoice from File</a>]
+[<a href="invoice.php?choice=dbView">View from Database</a>]
+</p>
+
+<hr />
+
+<?php
+function c($data)
+{
+  $data = trim($data);
+  $data = stripslashes($data);
+  $data = strip_tags($data); //removes HTML and PHP tags from a string
+  return $data;
+}//end c
+
+?>
+
+<!doctype html>
+<?php
+
+
+	//File to "clean" data types. This removes all html tags 
+include "c.php";
+
+//creating an array for all values
+$errors=array();
+$item=array("item, item1, item2");
+$description=array("description,description1,description2");
+$cost=array("cost,cost1,cost2");
+$quantity=array("quantity,quantity1,quantity2");
+
+//cleaning data
+$choice = $_REQUEST['choice'];
+$choice = c($choice);
+include "header.html";
+//eastablish a choice array which performs different actions based off of the user input
+$choice_array = array("add", "view", "addItem", "Save to Database","dbView");
+
+if(in_array($choice, $choice_array))
+{
+	if($choice=="add"){
+			$more = true;
+			$i = 1;
+			
+			while($more){
+				if ((isset($_POST['item_'.$i])) && ($_POST['item_'.$i] != "")){
+				$item[] = c($_POST['item_'.$i]);
+				$description[] = c($_POST['description_'.$i]);
+				$cost[] = c($_POST['cost_'.$i]);
+				$quantity[] = c($_POST['quantity_'.$i]);
+							
+				validate($item[$i], $description[$i], $cost[$i], $quantity[$i]);
+				} else {
+			$more = FALSE;
+			}
+			$i++;
+			}
+		
+		addInvoices($item[$i], $description[$i], $cost[$i] , $quantity[$i], $errors );
+	}elseif($choice=="view"){
+		showInvoices();
+	
+	}elseif($choice=="Add 1 Row"){
+		addRow();
+		$more = true;
+			$i = 0;
+			
+			while($more){
+			if ((isset($_POST['item_'.$i])) && ($_POST['item_'.$i] != "")){
+			$item_0 = c($_POST['item_0'.$i]);
+			$description_0 = c($_POST['description_0'.$i]);
+			$cost_0 = c($_POST['cost_0'.$i]);
+			$quantity_0 = c($_POST['quantity_0'.$i]);
+			
+			$item_1 = c($_POST['item_1'.$i]);
+			$description_1 = c($_POST['description_1'.$i]);
+			$cost_1 = c($_POST['cost_1'.$i]);
+			$quantity_1 = c($_POST['quantity_1'.$i]);
+							
+		validate2($item_0, $item_1, $description_0, $description_1, $cost_0, $cost_1, $quantity_0, $quantity_1);
+		} else {
+		$more = FALSE;
+		}
+		$i++;
+		}
+		
+	}elseif($choice=="dbView"){
+		viewFromDB();
+	}elseif($choice=="Save to Database"){
+		$more = true;
+			$i = 1;
+			
+			while($more){
+				if ((isset($_POST['item_'.$i])) && ($_POST['item_'.$i] != "")){
+				$item[] = c($_POST['item_'.$i]);
+				$description[] = c($_POST['description_'.$i]);
+				$cost[] = c($_POST['cost_'.$i]);
+				$quantity[] = c($_POST['quantity_'.$i]);
+							
+				validateForDB($item[$i], $description[$i], $cost[$i], $quantity[$i]);
+				} else {
+			$more = FALSE;
+			}
+			$i++;
+			}
+	}elseif($choice=="Add 2 Rows"){
+		add2Row($item[$i], $description[$i], $cost[$i] , $quantity[$i], $errors );
+	}else{
+		displayForm();
+	}
+}
+//checking input for the database entries to be added
+function validateForDB($item, $description, $cost, $quantity){
+	global $errors;
+	if($description == "")
+		$errors[0]="Please enter a description.";
+	if($item == "")
+		$errors[1]="Please enter an item.";
+	if($cost == "")
+		$errors[2]="Please enter a cost.";
+	if($quantity == "")
+		$errors[3]="Please enter a quantity.";
+	
+	//Print error message if one of the input fields is empty.  
+	$size = count($errors);
+	if($size > 0)
+		echo "ERROR: CHECK THAT ALL FIELDS HAVE VALUES IN THEM.";
+	else
+		addToDB($item, $description, $cost, $quantity);
+}
+//connects to database and adds data 
+function addToDB($item, $description, $cost, $quantity){
+	echo"Information Successfully saved to Database.";
+	$dbh = mysql_connect("localhost","sd7379","Y1OBQTAb")
+		or die("Couldn't connect to database.");
+	$db = mysql_select_db("sd7379", $dbh)
+		or die("Couldn't select database.");
+	$sql = " INSERT INTO invoices (item, description, cost, quantity) VALUES ('".$item."','".$description."','".$cost."','".$quantity."')";
+	$result = mysql_query($sql, $dbh)
+		or die("Something is wrong with your SQL statement.");
+	
+}
+//View the contents of this particular table in the database
+function viewFromDB(){
+	$dbh = mysql_connect("localhost","sd7379","Y1OBQTAb")
+		or die("Couldn't connect to database.");
+	$db = mysql_select_db("sd7379", $dbh)
+		or die("Couldn't select database.");
+	$sql = " SELECT item, description, cost, price, quantity FROM invoices";
+	$result = mysql_query($sql, $dbh)
+		or die("Something is wrong with your SQL statement.");
+echo '<table border="5" cellpadding="2" cellspacing="1" style="width:500px;">';
+	echo'<tr>
+			<td><strong>Item</strong></td>
+			<td><strong>Description</strong></td>
+			<td><strong>Price</strong></td>
+			<td><strong>Cost</strong></td>
+			<td><strong>Quantity</strong></td>
+		</tr>';
+		
+	while ($row = mysql_fetch_array($result)) {
+	$item = $row['item'];
+	$description = $row['description'];
+	$cost = $row['cost'];
+	$price = $row['price'];
+	$quantity = $row['quantity'];
+		
+		
+		echo'<tr>
+			<td>'.$item.'</td>
+			<td>'.$description.'</td>
+			<td>'.$price.'</td>
+			<td>'.$cost.'</td>
+			<td>'.$quantity.'</td>
+		</tr>
+	</tbody>';
+	}
+echo'</table>';
+}
+
+function calculatePrice($item, $description, $cost, $quantity){
+	$result = $cost * $quantity;
+	
+	validate($item, $description, $cost, $quantity);
+}
+
+//checking that all text boxes are filled in before sending them to the function which saves them
+function validate($item, $description, $cost, $quantity){
+	global $errors;
+	if($description == "")
+		$errors[0]="Please enter a description.";
+	if($item == "")
+		$errors[1]="Please enter an item.";
+	if($cost == "")
+		$errors[2]="Please enter a cost.";
+	if($quantity == "")
+		$errors[3]="Please enter a quantity.";
+	
+	//Print error message if one of the input fields is empty.  
+	$size = count($errors);
+	if($size > 0)
+		echo "ERROR: CHECK THAT ALL FIELDS HAVE VALUES IN THEM.";
+	else
+		addRecord($item, $description, $cost, $quantity);
+}
+function validate2($item_0, $item_1, $description_0, $description_1, $cost_0, $cost_1, $quantity_0, $quantity_1){
+	global $errors;
+	if($description_0 == "")
+		$errors[0]="Please enter a description.";
+	if($item_0 == "")
+		$errors[1]="Please enter an item.";
+	if($cost_0 == "")
+		$errors[2]="Please enter a cost.";
+	if($quantity_0 == "")
+		$errors[3]="Please enter a quantity.";
+	
+	if($description_1 == "")
+		$errors[0]="Please enter a description.";
+	if($item_1 == "")
+		$errors[1]="Please enter an item.";
+	if($cost_1 == "")
+		$errors[2]="Please enter a cost.";
+	if($quantity_1 == "")
+		$errors[3]="Please enter a quantity.";
+	
+	//Print error message if one of the input fields is empty.  
+	$size = count($errors);
+	if($size > 0)
+		echo "ERROR: CHECK THAT ALL FIELDS HAVE VALUES IN THEM.";
+	else
+		addRecord2($item_0, $item_1, $description_0, $description_1, $cost_0, $cost_1, $quantity_0, $quantity_1);
+}
+
+function addRecord($item, $description, $cost, $quantity){
+	
+	
+	$fp=fopen("invoices.txt", "a");
+	fwrite($fp, "\t<strong>ITEM:</strong>\t".$item. "\t<strong>DESCRIPTION:</strong>\t".$description."\t<strong>COST:</strong>\t" .$cost. "\t<strong>QUANTITY:</strong>\t".$quantity. "\t\n");
+	print "Invoice Added Successfully to File! Thank-you!";
+	fclose($fp); 
+}
+function addRecord2($item_0, $item_1, $description_0, $description_1, $cost_0, $cost_1, $quantity_0, $quantity_1){
+	
+	
+	$fp=fopen("invoices.txt", "a");
+	fwrite($fp, "\t<strong>ITEM:</strong>\t".$item_0. "\t<strong>DESCRIPTION:</strong>\t".$description_0."\t<strong>COST:</strong>\t" .$cost_0. "\t<strong>QUANTITY:</strong>\t".$quantity_0. "\t\n
+				\t <strong>ITEM:</strong>\t".$item_1. "\t<strong>DESCRIPTION:</strong>\t".$description_1."\t<strong>COST:</strong>\t" .$cost_1. "\t<strong>QUANTITY:</strong>\t".$quantity_1. "\t\n ");
+	print "Invoice Added Successfully to File! Thank-you!";
+	fclose($fp); 
+}
+//adding row if user chooses for a row to be added.
+function addRow(){
+		$self = $_SERVER['PHP_SELF'];
+	//include "header.html";
+
+	print <<<HERE
+
+<form action="$self" method="post" name="Invoice" target="_self">
+<table border="1" cellpadding="1" cellspacing="1" style="width:500px;">
+	<tbody>
+		<tr>
+			<td>Item</td>
+			<td>Description</td>
+			<td>Cost</td>
+			<td>Quantity</td>
+		</tr>
+		
+		<tr>
+			<td><input maxlength="50" name="item_0" id="item" value="$item" size="25" type="text" /></td>
+			<td><input maxlength="50" name="description_0" id="description" value="$description" size="25" type="text" /></td>
+			<td><input maxlength="7" name="cost_0" id="cost" value="$cost" size="8" type="text" /></td>
+			<td><input name="quantity_0" id="quantity" value="$quantity" size="4" type="text" /></td>
+		</tr>
+		<td><input maxlength="50" name="item_1" id="item" value="$item" size="25" type="text" /></td>
+			<td><input maxlength="50" name="description_1" id="description" value="$description" size="25" type="text" /></td>
+			<td><input maxlength="7" name="cost_1" id="cost" value="$cost" size="8" type="text" /></td>
+			<td><input name="quantity_1" id="quantity" value="$quantity" size="4" type="text" /></td>
+			<tr>
+		<input name="choice" type="submit" id="Add 1 Row" value="Add 1 Row" />
+		&nbsp;
+		<input name="choice" type="submit" id="Add 2 Rows" value="Add 2 Rows" />
+		</tr>
+		<div id="row">
+		</div>
+		
+	</tbody>
+</table>
+
+<p>&nbsp;</p>
+
+<p><input name="choice" type="submit" id="add" value="add" />&nbsp;<input name="reset" type="button" value="Reset" />&nbsp;<input name="saveToDB" type="submit" value="Save to Database" /></p>
+</form>
+HERE;
+
+include "footer.html";
+}
+function add2Row($item, $description, $cost, $quantity, $errors){
+		$self = $_SERVER['PHP_SELF'];
+	//include "header.html";
+
+	print <<<HERE
+
+<form action="$self" method="post" name="Invoice" target="_self">
+<table border="1" cellpadding="1" cellspacing="1" style="width:500px;">
+	<tbody>
+		<tr>
+			<td>Item</td>
+			<td>Description</td>
+			<td>Cost</td>
+			<td>Quantity</td>
+		</tr>
+		
+		<tr>
+			<td><input maxlength="50" name="item_1" id="item" value="$item" size="25" type="text" /></td>
+			<td><input maxlength="50" name="description_1" id="description" value="$description" size="25" type="text" /></td>
+			<td><input maxlength="7" name="cost_1" id="cost" value="$cost" size="8" type="text" /></td>
+			<td><input name="quantity_1" id="quantity" value="$quantity" size="4" type="text" /></td>
+		</tr>
+		<td><input maxlength="50" name="item_1" id="item" value="$item" size="25" type="text" /></td>
+			<td><input maxlength="50" name="description_1" id="description" value="$description" size="25" type="text" /></td>
+			<td><input maxlength="7" name="cost_1" id="cost" value="$cost" size="8" type="text" /></td>
+			<td><input name="quantity_1" id="quantity" value="$quantity" size="4" type="text" /></td>
+		<tr>
+		<td><input maxlength="50" name="item_1" id="item" value="$item" size="25" type="text" /></td>
+			<td><input maxlength="50" name="description_1" id="description" value="$description" size="25" type="text" /></td>
+			<td><input maxlength="7" name="cost_1" id="cost" value="$cost" size="8" type="text" /></td>
+			<td><input name="quantity_1" id="quantity" value="$quantity" size="4" type="text" /></td>
+		<tr>
+		<input name="choice" type="submit" id="Add 1 Row" value="Add 1 Row" />
+		&nbsp;
+		<input name="choice" type="submit" id="Add 2 Rows" value="Add 2 Rows" />
+		</tr>
+		<div id="row">
+		</div>
+		
+		
+	</tbody>
+</table>
+
+<p>&nbsp;</p>
+
+<p><input name="choice" type="submit" id="add" value="add" />&nbsp;<input name="reset" type="button" value="Reset" />&nbsp;<input name="saveToDB" type="submit" value="Save to Database" /></p>
+</form>
+HERE;
+
+include "footer.html";
+}
+function addInvoices($item, $description, $cost, $quantity, $errors){
+	
+	$self = $_SERVER['PHP_SELF'];
+	//include "header.html";
+
+	print <<<HERE
+
+<form action="$self" method="post" name="Invoice" target="_self">
+<table border="1" cellpadding="1" cellspacing="1" style="width:500px;">
+	<tbody>
+		<tr>
+			<td>Item</td>
+			<td>Description</td>
+			<td>Cost</td>
+			<td>Quantity</td>
+		</tr>
+		
+		<tr>
+			<td><input maxlength="50" name="item_1" id="item" value="$item" size="25" type="text" /></td>
+			<td><input maxlength="50" name="description_1" id="description" value="$description" size="25" type="text" /></td>
+			<td><input maxlength="7" name="cost_1" id="cost" value="$cost" size="8" type="text" /></td>
+			<td><input name="quantity_1" id="quantity" value="$quantity" size="4" type="text" /></td>
+		</tr>
+		<tr>
+		<input name="choice" type="submit" id="Add 1 Row" value="Add 1 Row" />
+		&nbsp;
+		<input name="choice" type="submit" id="Add 2 Rows" value="Add 2 Rows" />
+		</tr>
+		<div id="row">
+		</div>
+		
+		
+	</tbody>
+</table>
+
+<p>&nbsp;</p>
+
+<p><input name="choice" type="submit" id="add" value="add" />&nbsp;<input name="reset" type="button" value="Reset" />&nbsp;<input name="choice" type="submit" id="Save to Database" value="Save to Database" /></p>
+</form>
+HERE;
+
+include "footer.html";
+}
+
+function displayForm(){
+	//include "header.html";
+	include "footer.html";
+}
+
+
+function showInvoices(){
+	//include "header.html";
+
+	@$fp = fopen("invoices.txt", 'rb');
+	if($fp==0){
+	echo "<p><Strong>No Orders<Strong></>";	
+	exit;
+	}
+	
+	while(!feof($fp)){
+	
+	$line = fgets($fp, 999);
+	echo $line.  "<br>";
+
+        include "footer.html" ;
+
+}
+}
+?>
+</body>
+</html>
